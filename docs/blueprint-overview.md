@@ -5,7 +5,7 @@ The blueprint below is an execution-only playbook. Follow the steps in order; ea
 ## 0. Prerequisites
 - [ ] Fork or clone `levelnine-blueprint` with GitHub Actions enabled.
 - [ ] Grant Codex ChatOps bot `contents:write` and `workflows` scopes.
-- [ ] Populate mandatory repository secrets: `OPENAI_API_KEY`, `OPENAI_TTS_MODEL`, `OPENAI_TTS_VOICE`, `STABILITY_API_KEY`, `FLY_API_TOKEN`, `VERCEL_TOKEN`, `SUPABASE_SERVICE_ROLE`, `POSTGRES_URL`.
+- [ ] Populate mandatory repository secrets: `OPENAI_API_KEY`, `OPENAI_TTS_MODEL`, `OPENAI_TTS_VOICE`, `FLY_API_TOKEN`, `VERCEL_TOKEN`, `SUPABASE_SERVICE_ROLE`, `POSTGRES_URL`.
 - [ ] Confirm `infra/terragrunt.hcl` references the correct GitHub org/repo.
 
 ## 1. Bootstrap Infrastructure
@@ -39,7 +39,7 @@ The blueprint below is an execution-only playbook. Follow the steps in order; ea
 - [ ] Repeat for dev once demo passes checks.
 
 ### Agent Core (`agent-core` → Fly.io)
-- [ ] Ensure provider keys (OpenAI, Ollama, Stability) and TTS configuration (`OPENAI_TTS_MODEL`, `OPENAI_TTS_VOICE`) exist in tiered secrets.
+- [ ] Ensure provider keys (OpenAI, Ollama) and TTS configuration (`OPENAI_TTS_MODEL`, `OPENAI_TTS_VOICE`) exist in tiered secrets.
 - [ ] Run `/deploy service=agent-core tier=demo`.
 - [ ] Execute the smoke test script `scripts/agent-smoke.sh demo`.
 - [ ] Move to dev after demo passes smoke tests.

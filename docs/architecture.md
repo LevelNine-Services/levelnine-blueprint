@@ -27,7 +27,7 @@ flowchart TD
       MCP["🧠 MCP Server"]
       ROUTER["Provider Router"]
       TOOLS["MCP Tools (listProjects · triggerDeploy · queryDB · getWeather)"]
-      PROVIDERS["LLM/TTS Providers (OpenAI · Ollama · ElevenLabs · Stability)"]
+      PROVIDERS["LLM/TTS Providers (OpenAI · Ollama · ElevenLabs)"]
       MCP --> ROUTER --> PROVIDERS
       ROUTER --> DB
       MCP --> TOOLS
@@ -78,7 +78,7 @@ Secrets (GitHub → Deploy target) are synchronized via `/secrets:sync`, which f
 ## 🤖 MCP Agent-Core Responsibilities
 
 - **Context brokering**: Normalize prompts from UI/API and enrich with contextual data (project metadata, user preferences, environment status).
-- **Provider routing**: Dynamic selection between OpenAI, Ollama (self-hosted), ElevenLabs (TTS), Stability (image) based on task metadata.
+- **Provider routing**: Dynamic selection between OpenAI, Ollama (self-hosted), and ElevenLabs (TTS) based on task metadata.
 - **Tool orchestration**: Implements MCP tool interfaces for deployment triggers, database queries, project search, and telemetry lookups.
 - **Fallback logic**: Circuit breakers around provider latency, with Redis caching of recent conversations for resilience.
 
