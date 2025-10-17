@@ -131,4 +131,4 @@ Secrets (GitHub → Deploy target) are synchronized via `/secrets:sync`, which f
 
 ---
 
-_Last updated: $(date +'%Y-%m-%d')_
+_Last updated: 2025-10-16_
