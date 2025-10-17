@@ -1,0 +1,125 @@
+name: ChatOps
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  route:
+    if: |
+      (github.event_name == 'issue_comment' && github.event.action == 'created') ||
+      (github.event_name == 'pull_request_review' && github.event.action == 'submitted')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract command
+        id: parse
+        run: |
+          BODY="${{ github.event.comment.body || github.event.review.body }}"
+          CMD=$(echo "$BODY" | sed -n 's#^\s*/\([a-zA-Z0-9:_-]\+\).*#\1#p' | head -n1)
+          ARGS=$(echo "$BODY" | sed -n 's#^\s*/[a-zA-Z0-9:_-]\+\s*\(.*\)$#\1#p' | head -n1)
+          echo "cmd=$CMD"   >> $GITHUB_OUTPUT
+          echo "args=$ARGS" >> $GITHUB_OUTPUT
+          echo "Parsed CMD=[$CMD] ARGS=[$ARGS]"
+
+      - name: Allowlist actors
+        run: |
+          case "${{ github.actor }}" in
+            devendra-phadke|levelnine-bot|LevelNine-Services) echo "✅ allowed";;
+            *) echo "⛔ not allowed: ${{ github.actor }}"; exit 1;;
+          esac
+
+      - name: Guardrail - whitelist commands
+        run: |
+          case "${{ steps.parse.outputs.cmd }}" in
+            bootstrap|deploy|db:provision|secrets:sync) echo "✅ command ok";;
+            *) echo "⛔ unsupported command: ${{ steps.parse.outputs.cmd }}"; exit 78;;
+          esac
+
+      - name: Bootstrap
+        if: steps.parse.outputs.cmd == 'bootstrap'
+        run: bash scripts/levelnine_bootstrap_all.sh ${{ steps.parse.outputs.args }}
+        env:
+          GH_TOKEN:        ${{ secrets.GH_TOKEN }}
+          FLY_API_TOKEN:   ${{ secrets.FLY_API_TOKEN }}
+          VERCEL_TOKEN:    ${{ secrets.VERCEL_TOKEN }}
+          SUPABASE_KEY:    ${{ secrets.SUPABASE_KEY }}
+          NEON_API_KEY:    ${{ secrets.NEON_API_KEY }}
+
+      - name: Deploy
+        if: steps.parse.outputs.cmd == 'deploy'
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          VERCEL_TOKEN:  ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          # Usage: /deploy env=demo|dev|test|prod
+          ENV="$(echo "${{ steps.parse.outputs.args }}" | sed -n 's/.*env=\([^ ]*\).*/\1/p')"
+          ENV="${ENV:-dev}"
+          echo "🚀 Deploying environment: $ENV"
+
+          case "$ENV" in
+            demo)
+              echo "→ Vercel Preview for frontend (Demo) & Fly demo for api/agent-core"
+              # vercel deploy --token "$VERCEL_TOKEN" --prod   # add project flags
+              # fly -t "$FLY_API_TOKEN" deploy -a levelnine-api-demo
+              ;;
+            dev)
+              echo "→ Vercel preview + Fly dev deploy"
+              # vercel deploy --token "$VERCEL_TOKEN"
+              # fly deploy -a levelnine-api-dev
+              ;;
+            test|staging)
+              echo "→ Staging rollout"
+              # fly deploy -a levelnine-api-staging
+              ;;
+            prod|production)
+              echo "→ Manual gated prod deploy (add approvals)"
+              # vercel deploy --token "$VERCEL_TOKEN" --prod
+              # fly deploy -a levelnine-api-prod
+              ;;
+            *) echo "⛔ Unknown env: $ENV"; exit 1;;
+          esac
+          echo "✅ deploy stub finished (wire real commands as needed)"
+
+      - name: DB Provision
+        if: steps.parse.outputs.cmd == 'db:provision'
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          # Usage: /db:provision env=demo|dev|test|prod
+          ENV="$(echo "${{ steps.parse.outputs.args }}" | sed -n 's/.*env=\([^ ]*\).*/\1/p')"
+          ENV="${ENV:-demo}"
+          echo "🗄️ Provisioning DB for: $ENV"
+          case "$ENV" in
+            demo)
+              echo "→ Supabase free tier (manual CLI/API here)"
+              ;;
+            dev)
+              echo "→ Neon serverless (dev branches)"
+              ;;
+            test|staging)
+              echo "→ Render Postgres free tier"
+              ;;
+            prod|production)
+              echo "→ Fly.io Postgres via OpenTofu"
+              ;;
+            *) echo "⛔ Unknown env: $ENV"; exit 1;;
+          esac
+          echo "✅ db:provision stub finished"
+
+      - name: Secrets Sync
+        if: steps.parse.outputs.cmd == 'secrets:sync'
+        run: bash scripts/sync-secrets.sh
+        env:
+          GH_TOKEN:      ${{ secrets.GH_TOKEN }}
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          VERCEL_TOKEN:  ${{ secrets.VERCEL_TOKEN }}
